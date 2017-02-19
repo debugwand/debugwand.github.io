@@ -1,0 +1,36 @@
+<h1>Get some focus: outline</h1>
+
+<p>28 September 2009</p>
+<p>When a link or button has focus, there is usually a visual indicator such as a dotted or coloured line around the element.</p>
+
+<p>The CSS property is called outline.</p>
+
+<p>Some designers/developers find the outline ugly and remove it using <code>outline: none.</code> Some reset CSS files also include this by default, with the optimistic expectation that you will set your own.</p>
+
+<p>Eric Meyer says that <a href="http://meyerweb.com/eric/thoughts/2007/05/01/reset-reloaded/">he's removed the outline "so that you remember to define your own"</a>, however I've noticed that this is the exception rather than the rule.  I've a great deal of admiration for Eric Meyer, his work on CSS has improved many a developer including me, but on this issue I have to disagree.  A <a href="http://www.google.com/codesearch?hl=en&amp;start=10&amp;sa=N&amp;q=:focus+AND+%22outline:0%22+lang:css">quick search</a> on google code search shows just how regularly it doesn't get done.</p>
+
+<p>If you <em>really </em>wanted people to remember to redefine their own outline styles, you'd make it 6px solid red.</p>
+
+<p>Removing the outline makes a page inaccessible because a keyboard-based user has no indication of what has focus or where their cursor is.  They have absolutely no idea of where they will end up if they press the enter key and absolutely no idea of where they are in the page order.</p>
+
+<p>Visible focus in now an AA level accessibility guideline: <a href="http://tibor.w3.org/TR/WCAG20/#navigation-mechanisms 2.4.7">http://tibor.w3.org/TR/WCAG20/#navigation-mechanisms 2.4.7</a></p>
+
+<p>So please don't remove the outline, and if you come across
+<code><pre>
+a{
+...
+outline: 0;
+...
+}</pre></code>
+
+in your CSS, remove this and set the outline to 0 on the hover and active states  <span style="text-decoration: line-through;">or reset it using the :focus pseudo-class:</span>
+
+<span style="text-decoration: line-through;"><code>:focus {outline: 1px dotted;} /* or similar */</code></span></p>
+
+<p>The colour of the outline should be inherited from the link's default colour if you don't specify one.</p>
+
+<p><strong>UPDATE</strong>: <a href="http://www.splintered.co.uk/news/112/">Patrick Lauke</a> also has an interest in this and has set up his own <a href="http://people.opera.com/patrickl/experiments/keyboard/test">CSS outlines test page.</a> Suppressing the outline on the :active pseudoclass seems to be the most elegant solution to stay accessible while avoiding the outline for mouse users.</p>
+
+<p><strong>UPDATE 2</strong>: Patrick has <a href="http://24ways.org/2009/dont-lose-your-focus">since discovered</a> a flash of outline occurs on links to external pages so the best suppression technique is:</p>
+
+<p><strong><code>a:hover, a:active { outline: none; }</code></strong></p>
