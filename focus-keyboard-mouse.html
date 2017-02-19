@@ -1,0 +1,25 @@
+<h1>Get some focus: keyboard and mouse events</h1>
+
+<p>28 September 2009</p>
+<p>When we add interactivity, we use event handling.  A common trap is to handle the events that are fired by the mouse but forget about what non-mouse users need.</p>
+<h3>Click</h3>
+<p>Click events are obviously fired from the mouse clicking on an item, but they are also fired when the user is focussed on an element and presses enter, so click events are covered for keyboard users <strong>as long as they can tab onto them in the first place.</strong></p>
+
+<p>When you click on something, a focus event is fired as well as the click event, after all you are focussing on something when you click on it.  If you are listening for the focus event and attaching functionality to it firing, remember that this functionality will also occur when you click on the attached elements.</p>
+<h3>Mouseout/mouseover</h3>
+<p>Mouseout and mouseover events rely on a mouse to trigger them</p>
+
+<p>For mouseout events, pair them with blur events
+<ul>
+	<li>myelem.mouseout = function(){etc.}
+myelem.blur = myelem.mouseout;</li>
+</ul>
+For mouseover events, pair them with focus events but remember they will trigger on mouse click as well as mouseover
+<ul>
+	<li>myelem.mouseover = function(){etc.}
+myelem.focus = myelem.mouseover;</li>
+</ul>
+</p>
+<p>See the <a href="http://www.dawnbudge.co.uk/index.php/code-examples/focus-and-click-events/">code examples</a><p>
+<p>
+(If you want to find out more about events, <a href="http://www.quirksmode.org/js/contents.html#events">PPK has an excellent events write-up</a>)</p>

@@ -1,0 +1,73 @@
+<h1>A better application cache manifest</h1>
+
+<p>24 February 2011</p>
+
+<p>I've recently been messing around with offline application caching.  At a simple static level it is pretty basic, but once you start thinking about what might actually happen in real life it gets a lot more ugly.</p>
+
+<p>The following sources got me started with offline caching in the first place.  If you need more background to what application cache is, you should read these first.</p>
+<ul>
+	<li><a href="http://jonathanstark.com/blog/2009/09/27/debugging-html-5-offline-application-cache/">http://jonathanstark.com/blog/2009/09/27/debugging-html-5-offline-application-cache/</a></li>
+	<li><a href="http://diveintohtml5.org/offline.html">http://diveintohtml5.org/offline.html</a></li>
+	<li><a href="http://www.slideshare.net/jonathanstark/offline-application-cache">http://www.slideshare.net/jonathanstark/offline-application-cache</a></li>
+</ul>
+<p>My main problem with it is that every time I make a change to my files, I have to go into my cache.manifest file and update a comment somewhere.  Why? Because the application cache is checked for updates first.  If there are no updates, it just stops.  It doesn't check any of the underlying files for updates.</p>
+
+<p>That's efficient in terms of client-server communication by reducing the amount of calls to check whether cached versions can be used or need updated, but its also really dumb, and a nuisance to work with.  You start relying on people to remember on these little jobs, and that introduces a risk of human error.  It's not an acceptable risk because it is an avoidable risk.</p>
+
+<p>Luckily we can use server-side technology to generate our cache manifests and grab the file update timestamp.  Here's what I've learned thus far:
+<ol>
+	<li>the manifest attribute on the html element doesn't have to point to a *.manifest file.  It can point to a manifest.php file (for example).</li>
+	<li>in the dynamic page, set your header to serve up the right mime type.  In PHP, this is
+<code>&lt;? php header("Content-Type: text/cache-manifest;charset=utf-8"); ?&gt;</code></li>
+	<li>find the most recently updated file date and echo it out in a comment. If there's not been a change, the comment will remain the same in the generated code as it is in the cached version.   In my example below I'm statically setting which files I want to be in the cache. <a href="http://www.slideshare.net/jonathanstark/offline-application-cache"> Jonathan Stark shows a way of going through the file system to cache all files</a> if you'd rather.  You'd just add the timestamp bits in where required.</li>
+</ol>
+</p>
+<code><pre>
+&lt;?php
+	header(&quot;Content-Type: text/cache-manifest;charset=utf-8&quot;);
+	$cache_files = array(
+					&quot;testhtml5.htm&quot;,
+					&quot;testinvisdyn.php&quot;,
+					&quot;testhtml5.css&quot;,
+					&quot;testhtml5.js&quot;,
+					&quot;jquery.js&quot;,
+					&quot;json.js&quot;
+					);
+	$fallback_files = array(
+						&quot;/&quot; =&gt; &quot;fallback/testhtml5fall.htm&quot;
+					   );
+?&gt;
+CACHE MANIFEST
+NETWORK:
+*
+CACHE:
+&lt;?php
+	$cache_mod = 0;
+	foreach($cache_files as $f){
+		echo &quot;$f \n&quot;;
+		$last_mod = filemtime($f);
+		if($last_mod &gt; $cache_mod){
+			$cache_mod = $last_mod;
+		}
+	}
+	unset($f);
+	
+	echo &quot;# $cache_mod \n&quot;;
+?&gt;
+
+FALLBACK:
+&lt;?php
+	$cache_mod = 0;
+	foreach($fallback_files as $d =&gt; $f){
+		echo &quot;$d $f \n&quot;;
+		$last_mod = filemtime($f);
+		if($last_mod &gt; $cache_mod){
+			$cache_mod = $last_mod;
+		}
+	}
+	unset($f);
+	unset($d);
+	
+	echo &quot;# $cache_mod \n&quot;;
+?&gt;
+</pre></code>
