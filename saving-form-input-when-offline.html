@@ -1,0 +1,213 @@
+<h1>Saving form input when you're offline using localStorage</h1>
+
+<p>28 February 2011</p>
+<p>Leading on from the work I did with the application cache, I became interested in using local storage to allow me to input data into a form and save it offline, ready for synching later on when I was online.</p>
+
+<p>I've made use of JSON.js for handling JSON and jQuery in the code below for some convenience, you should be able to swap out for your library of choice.</p>
+</p>
+Some caveats:
+<ul>
+	<li> potential for data collisions if you edit on another device or browser between saving offline and synching.
+<ul>
+	<li>you could feasibly solve this by dynamically building duplicate form fields that sit next to the server version and contain the local data.  A button to copy across from one field to another is quite a simple trick.</li>
+</ul>
+</li>
+	<li> you get 5MB of localstorage per domain, meaning it isn't suitable for documents over 5000 characters (including input names and syntax) or for saving a vast amount of forms without synchronising.  There's a warning provided but it happens at a stage where the storage is already refusing to save, so the user has to copy their content to another file</li>
+	<li> local storage only handles text in key-value strings, so you can't save your data as a JSON object, you have to stringify it.</li>
+	<li>Try...Catch is not my favourite way of handling detection or errors, but in the 2 cases below it is the only practical option</li>
+</ul>
+Inspiration:
+<ul>
+	<li><a href="http://diveintohtml5.org/storage.html">http://diveintohtml5.org/storage.html</a></li>
+	<li><a href="http://paperkilledrock.com/2010/05/html5-localstorage-part-one/">http://paperkilledrock.com/2010/05/html5-localstorage-part-one/</a></li>
+</ul>
+</p>
+<code><pre>
+
+/*
+OnOffApp makes use of local storage to save form input locally when a user is offline and allow them to synchronise it when they are back online again.
+Dependencies:	json.js http://www.json.org/
+				jQuery http://www.jquery.com/
+Config:			when calling init, there are 5 items that can be optionally configured
+				id
+					unique identifier for the form to be used in local storage as the key
+				field_id
+					jQuery object of the field that supplies the id, used to find the parent form, otherwise form defaults to all forms on page
+				synchMsg
+					HTML to display to inform the user they have items to be synchronised to the server
+				synchBtn
+					HTML for synchronising button
+				warnMsg
+					HTML for the message to show the user when local storage is full and data cannot be saved
+*/
+
+OnOffApp = (function(){
+	
+	//variables available throughout the function
+	var UID;
+	var postForm = $(&quot;form&quot;);
+	var holder = $(&quot;&lt;div id=\&quot;synchMsg\&quot;&gt;&lt;/div&gt;&quot;);
+	var config = {};
+	
+	//initialiser function
+	//@argument usrconfig: an object of config options
+	var init = function(usrconfig){
+		setup_config(usrconfig);
+		var submit_button = postForm.delegate(&quot;input[type=submit]&quot;, &quot;click&quot;, submit_click);
+		if(retrieveLocalData() === true){
+			synchMessage();
+		}
+		$(window).bind(&quot;online&quot;, synchMessage);
+		$(window).bind(&quot;offline&quot;, synchMessage_remove);
+	};
+	
+	//set-up defaults for user configurable messages and overwrite where specified
+	//@arguments usrconfig: object of user-set options
+	//@returns the config object
+	var setup_config = function(usrconfig){
+		var id = location.href;
+		config.synchMsg = &quot;&lt;p class=\&quot;synch\&quot;&gt;Locally saved data can be synchronised now&lt;/p&gt;&quot;;
+		config.synchBtn = &quot;&lt;input type=\&quot;submit\&quot; value=\&quot;Synch\&quot; class=\&quot;synch\&quot; /&gt;&quot;;
+		config.warnMsg = &quot;&lt;p class=\&quot;warn\&quot;&gt;Local storage is full.&lt;/p&gt;&quot;;
+		 for(var i in usrconfig){
+			if(i === &quot;id&quot;){
+				id = usrconfig[i].val();
+				continue;
+			}
+			else if(i === &quot;field_id&quot;){
+				postForm = usrconfig[i].closest(&quot;form&quot;);
+				continue;
+			}
+			config[i] = usrconfig[i];
+		 }
+		 UID = &quot;uID-&quot; + id;
+		 return config;
+	};
+	
+	//submit button clicked
+	//detect if we are online.  If so, grab any saved data as well as existing data and save via AJAX, if not save to local storage
+	var submit_click = function(e){
+		e.preventDefault();
+		var data = getFormInput();
+		var savedData = $.parseJSON(getLocalData());
+		if(navigator.onLine){
+			saveToServer($.extend({},savedData,data));
+		}
+		else{
+			setLocalData(JSON.stringify(data));
+		}
+	};
+	
+	//get the form inputs and put into object notation
+	//@returns an object
+	var getFormInput = function(){
+		var formArray = postForm.serializeArray(),
+			o = {};
+			$.each(formArray, function(){
+				o[this.name] = this.value;
+			});
+		return o;
+	};
+	
+	//get localStorage data
+	//@returns string of locally stored data or an empty string
+	var getLocalData = function(){
+		return localStorage.getItem(UID) || &quot;&quot;;
+	};
+	
+	//set localStorage data, if out of space add a warning instead
+	var setLocalData = function(data){
+		try {
+			localStorage.setItem(UID, data);
+		}
+		catch (e) {
+			if (e == QUOTA_EXCEEDED_ERR) {
+				postForm.prepend(config.warnMsg);
+			}
+		}
+	};
+	
+	//get the data from localStorage and add saved values into the relevant fields
+	//@returns true or false depending on whether there was locally stored data
+	var retrieveLocalData = function(){
+		var oldData = getLocalData();
+		if(oldData !== &quot;&quot;){
+			var fields = $.parseJSON(oldData),
+				field;
+			$.each(fields, function(key, val){
+				field = $(&quot;[name=&quot; + key + &quot;]&quot;);
+				if(field.length &gt; 0){
+					if(field.is(&quot;:checkbox&quot;) || field.is(&quot;:radio&quot;)){
+						field.attr(&quot;checked&quot;, &quot;checked&quot;);
+					}
+					else{
+						field.val(val);
+					}
+				}
+			});
+			return true;
+		}
+		return false;
+	};
+	
+	//if you have localStorage data and you are online, prompt the user to synchronise their data (i.e. save it to the server)
+	var synchMessage = function(){
+		if(navigator.onLine &amp;&amp; getLocalData() !== &quot;&quot;){
+			if($(&quot;#synchMsg&quot;).length === 0){
+				holder.append(config.synchMsg).append(config.synchBtn);
+				postForm.prepend(holder);
+			}
+			else{
+				holder.show();
+			}
+		}
+	};
+	
+	//remove the synch message
+	var synchMessage_remove = function(){
+		holder.hide();
+	};
+	
+	//save form data to the server via AJAX
+	var saveToServer = function(data){
+		var url = postForm.attr(&quot;action&quot;);
+		var params = $.param(data);
+		var me = this;
+		$.ajax({
+			method: &quot;post&quot;,
+			url: url,
+			data: params,
+			success: savedSuccess(data)
+		});
+	};
+	
+	//after data saved to server, remove the saved data from localStorage and remove the synchronise message
+	var savedSuccess = function(){
+		localStorage.removeItem(UID);
+		synchMessage_remove();
+	};
+	
+	//interfacing methods and properties
+	return {
+		init: init
+	};
+}());
+
+
+//For the purposes of the demo, there is a hidden input with id &quot;post_id&quot; with the unique identifier for the post (like Wordpress)
+$(document).ready(function(){
+	try {
+		if('localStorage' in window &amp;&amp; window['localStorage'] !== null){
+			OnOffApp.init({
+				&quot;id_field&quot; : $(&quot;#post_id&quot;),
+				&quot;id&quot; : $(&quot;#post_id&quot;).val(),
+				&quot;warnMsg&quot; : &quot;&lt;p class=\&quot;warn\&quot;&gt;Sorry, your local storage is full up.  Please copy and save your latest work to a text file and go online to synchronise your work as soon as you can.&lt;/p&gt;&quot;,
+				&quot;synchMsg&quot; : &quot;&lt;p class=\&quot;synch\&quot;&gt;You have locally saved data that you can now synchronise with the live server&lt;/p&gt;&quot;
+			});
+		}
+	}
+	catch(e) {
+		return false;
+	}
+});
+</pre></code>
