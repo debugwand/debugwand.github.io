@@ -1,0 +1,48 @@
+<h1>Accessible select box (dropdown) change events that work cross-browser, including IE, Chrome and touch devices</h1>
+
+<p>21 June 2012</p>
+
+<p>There's a well-know issue with select elements where if you listen for the change event, it will trigger differently between browsers, and on IE it will trigger in a way that makes it inaccessible.  </p>
+
+<p>Take the following example: user tabs onto a select element and then uses the arrow key to move through the list. In IE (tested versions 7-9), this triggers the change event whereas other browsers will wait until you've moved off the element.  </p>
+
+<p>Try this <a href="http://jsfiddle.net/debugwand/twkQu/">demo on jsfiddle</a>, it will alert the value of the option you've selected when 'change' event gets fired.</p>
+
+<p>If you are using your select element for navigating to another page, the keyboard user will never be able to get past the first and second item in your list.  If you are using the select element for loading in more content via AJAX (e.g. updating other field items based on a select box selection is quite common), then you are going to be hitting your server far more than necessary.</p>
+
+<p>The solution is to bind to blur, click and keydown for IE and change for everything else (should include touch devices), and then a) filter out keypresses that aren't spacebar or enter and b) check to see if the selected option has actually changed.  The below code uses jQuery, but it is all possible via native JS or other libraries.  Sadly it relies on checking the browser's user agent as there isn't a feature you can test for (if I've overlooked something I'd love to hear about it).</p>
+
+<p>Have a look at the <a href="http://jsfiddle.net/debugwand/zz3DQ/">accessibile version on jsfiddle</a></p>
+<code><pre>
+var somemodule = (function () {
+  var obj = {
+    //some code
+    bindDOM: function () {
+      var evts = "";
+      //accessibility workaround: onchange is good for non-ie; keydown, click and blur is good for ie (but not for chrome)
+      //unfortunately we cannot detect this with feature support so must rely on browser support
+      if ($jQ.browser.msie) {
+        evts = "keydown click blur";
+      }
+      else {
+        evts = "change";
+      }
+      this.elem.on(evts, $jQ.proxy(this.onFooChange, this));
+    },
+    onFooChange: function (e) {
+      var id;
+      if (e.type !== "keydown" || (e.which === 13 || e.which === 32)) {
+        id = $jQ(e.target).val();
+        if (id !== this.currentFoo) {
+          this.currentFoo = id;
+          this.getBar(id);
+        }
+      }
+    },
+  };
+  
+  //more code
+  return obj;
+}());
+
+</pre></code>

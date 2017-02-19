@@ -1,0 +1,20 @@
+<h1>Cleaning up Excel-generated HTML with sed on Mac Terminal</h1>
+
+<p>03 March 2011
+<p>Not so long ago, a client gave us an Excel spreadsheet to work from as a temporary measure while the database got set up.
+</p>
+<p>Excel exports to HTML but fills it with rubbish.  Using regular expression-based find and replace in my IDE is normally fine, but with a file this large it froze.  Command line is the only solution in such a case.
+</p>
+<p>On the mac Terminal, the sed command is a little bit different from what you might use on *nix (and totally different from what you would do with  a PC).
+</p>
+<p>After manually cleaning up the head section, the following 3 commands cleaned up the table cells in my export:</p>
+<p>
+<code><pre>
+	sed -i '' 's/class=xl[0-9]*//g' Table.htm
+	sed -i '' 's/width=[0-9]*//g' Table.htm
+	sed -i '' 's/height=[0-9]*//g' Table.htm
+</pre></code>
+</p>
+<p>sed is a stream editor, the -i switch makes it edit in place, the '' is where Mac differs.  It requires a backup file name even if that is blank (therefore overwriting the original file) whereas for *nix it is optional.</p>
+
+<p>The next bit is the regular expression and these particular ones are tailored to remove the class, width and height attributes that Excel adds to all the &lt;td&gt; elements.  Finally, the name of the file to edit goes in.</p>
